@@ -21,14 +21,14 @@ Stateless widgets in Flutter are immutable and do not hold any state that change
 - `SnackBar`: A message widget that appears at the bottom of the screen to provide feedback about an operation.
 ## Steps
 ### 1. create new flutter project
-`
+    ```
     flutter create inventaris_mobile
     cd inventaris_mobile
     flutter run
-`
+    ```
 ### 2. Modify main.dart and create menu.dart
 1. main.dart
-`
+    ```
     import 'package:flutter/material.dart';
     import 'package:rakhas_inventory/menu.dart';
 
@@ -67,9 +67,9 @@ Stateless widgets in Flutter are immutable and do not hold any state that change
         );
     }
     }
-`
+    ```
 2. menu.dart
-`
+    ```
     import 'package:flutter/material.dart';
 
     class MenuItem {
@@ -190,4 +190,4 @@ Stateless widgets in Flutter are immutable and do not hold any state that change
         );
     }
     }
-`
+    ```
