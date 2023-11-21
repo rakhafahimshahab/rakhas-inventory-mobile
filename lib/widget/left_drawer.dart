@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rakhas_inventory/screens/menu.dart';
 import 'package:rakhas_inventory/screens/item_form.dart';
+import 'package:rakhas_inventory/screens/list_item.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -60,6 +61,17 @@ class LeftDrawer extends StatelessWidget {
               Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => ItemFormPage())
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.shopping_basket),
+            title: const Text('Item List'),
+            onTap: () {
+              // Route menu to product page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ItemPage()),
               );
             },
           ),

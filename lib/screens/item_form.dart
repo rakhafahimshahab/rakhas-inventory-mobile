@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:rakhas_inventory/widget/left_drawer.dart';
+import 'package:rakhas_inventory/screens/menu.dart';
+import 'dart:convert';
 
 class ItemFormPage extends StatefulWidget {
   const ItemFormPage({super.key});
@@ -17,6 +21,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         title: const Center(
@@ -159,39 +164,33 @@ class _ItemFormPageState extends State<ItemFormPage> {
                         backgroundColor:
                         MaterialStateProperty.all(Colors.teal),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState!.validate()) {
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title: const Text('Item successfully saved'),
-                                content: SingleChildScrollView(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      // Display other values here
-                                      Text('Name: $_name'),
-                                      Text('Amount: $_amount'),
-                                      Text('Category: $_category'),
-                                      Text('Description: $_description')
-                                    ],
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text('OK'),
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                          // Reset the form after the dialog is displayed
-                          _formKey.currentState!.reset();
+                          // Send request to Django and wait for the response
+                          final response = await request.postJson(
+                              "http://http://localhost:8000/create-flutter/",
+                              jsonEncode(<String, String>{
+                                'name': _name,
+                                'amount': _amount.toString(),
+                                'categories': _category,
+                                'description': _description,
+                              }));
+                          if (response['status'] == 'success') {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text("New item has saved successfully!"),
+                            ));
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => MyHomePage()),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content:
+                              Text("Something went wrong, please try again."),
+                            ));
+                          }
                         }
                       },
                       child: const Text(
