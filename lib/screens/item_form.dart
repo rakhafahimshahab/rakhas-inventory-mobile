@@ -168,11 +168,11 @@ class _ItemFormPageState extends State<ItemFormPage> {
                         if (_formKey.currentState!.validate()) {
                           // Send request to Django and wait for the response
                           final response = await request.postJson(
-                              "http://http://localhost:8000/create-flutter/",
+                              "http://localhost:8000/create-flutter/",
                               jsonEncode(<String, String>{
                                 'name': _name,
                                 'amount': _amount.toString(),
-                                'categories': _category,
+                                'category': _category,
                                 'description': _description,
                               }));
                           if (response['status'] == 'success') {
