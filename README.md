@@ -867,8 +867,8 @@ urls.py:
 also add the routing to the new app in the project folder
 
 ### 2. Custom Model
-create items.dart in a new folder called model
-run django server and goto your json path in local server
+create items.dart in a new folder called model\
+run django server and goto your json path in local server\
 copy paste json code to [QuickType](https://app.quicktype.io)
 ```
     // To parse this JSON data, do
