@@ -654,8 +654,809 @@ Clean Architecture in Flutter involves structuring the app into three main layer
     }
 ```
 
+# Assignment 9
+## Questions
+### 1. Can we retrieve JSON data without creating a model first? If yes, is it better than creating a model before retrieving JSON data?
+Yes, it is possible to retrieve JSON data in Flutter without creating a model first. This can be done by directly parsing the JSON data into a dynamic type or a map in Dart. However, creating a model before retrieving JSON data offers several advantages. It enhances code readability, makes the data easier to manage, and helps in maintaining type safety, which is crucial for large and complex applications. Models act as a blueprint for the data, ensuring that only valid data is processed and helping in catching errors early in the development process.
+### 2. Explain the function of CookieRequest and explain why a CookieRequest instance needs to be shared with all components in a Flutter application.
+CookieRequest is not a standard class or function in Flutter. However, if we consider a hypothetical CookieRequest in the context of web and network programming, it would likely be a class or function designed to handle HTTP cookies in network requests. In a Flutter application, sharing a CookieRequest instance across different components would be important to maintain session consistency. This ensures that all components of the app use the same session data, like authentication tokens or user preferences, leading to a seamless user experience and consistent data handling across the application.
+### 3. Explain the mechanism of fetching data from JSON until it can be displayed on Flutter.
+- *Making a Network Request*: Using packages like http to send a network request to a server.
+- *Receiving the JSON Response*: The server responds with JSON-formatted data.
+- *Parsing the JSON Data*: The received JSON data is parsed. This can be done directly into a map or by using a model class that represents the JSON structure.
+- *Using the Data in the App*: The parsed data is then used to update the application's state, which can be displayed in the UI. Flutter's widgets rebuild themselves when their state changes, allowing the new data to be displayed.
+### 4. Explain the authentication mechanism from entering account data on Flutter to Django authentication completion and the display of menus on Flutter.
+- *Entering Account Data*: The user enters account data (like username and password) in the Flutter app.
+- *Sending Authentication Request*: The app sends these credentials to the Django backend, usually as a POST request.
+- *Django Authentication Process*: Django processes the request. This involves verifying the credentials against the database.
+- *Response and Token Generation*: If authenticated, Django sends back a response, often including a token (like a JWT) for session management.
+- *Token Storage in Flutter*: The Flutter app stores this token securely (possibly using a package like flutter_secure_storage).
+- *Accessing Secured Resources*: The app uses this token in subsequent requests to access protected resources.
+- *Display of Menus*: Once authenticated, the Flutter app updates its state and UI to display menus and features available to the authenticated user.
+### 5. List all the widgets you used in this assignment and explain their respective functions.
+- `ListView`:  is a scrollable list widget used in Flutter to display a list of items.
+-  `FutureBuilder`:  It is used to perform asynchronous tasks and display the results once the task is complete.
+- `TextFormField`:  is a form field widget that allows users to enter text. 
+- `ElevatedButton`: is a Material Design button widget that appears to be raised (or elevated) above the UI.
+- `InkWell`:  is a rectangular area of a Material that responds to touch actions.
+## Steps
+### 1. Creating Authentication
+1. make login.dart in screens folder
+```
+    import 'package:rakhas_inventory/screens/menu.dart';
+    import 'package:flutter/material.dart';
+    import 'package:pbp_django_auth/pbp_django_auth.dart';
+    import 'package:provider/provider.dart';
+
+    void main() {
+    runApp(const LoginApp());
+    }
+
+    class LoginApp extends StatelessWidget {
+    const LoginApp({super.key});
+
+    @override
+    Widget build(BuildContext context) {
+        return MaterialApp(
+        title: 'Login',
+        theme: ThemeData(
+            primarySwatch: Colors.teal,
+        ),
+        home: const LoginPage(),
+        );
+    }
+    }
+
+    class LoginPage extends StatefulWidget {
+    const LoginPage({super.key});
+
+    @override
+    _LoginPageState createState() => _LoginPageState();
+    }
+
+    class _LoginPageState extends State<LoginPage> {
+    final TextEditingController _usernameController = TextEditingController();
+    final TextEditingController _passwordController = TextEditingController();
+
+    @override
+    Widget build(BuildContext context) {
+        final request = context.watch<CookieRequest>();
+        return Scaffold(
+        appBar: AppBar(
+            title: const Text('Login'),
+        ),
+        body: Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+                TextField(
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                    labelText: 'Username',
+                ),
+                ),
+                const SizedBox(height: 12.0),
+                TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                    labelText: 'Password',
+                ),
+                obscureText: true,
+                ),
+                const SizedBox(height: 24.0),
+                ElevatedButton(
+                onPressed: () async {
+                    String username = _usernameController.text;
+                    String password = _passwordController.text;
+
+                    // Check credentials
+                    // TODO: Change the URL and don't forget to add a trailing slash (/) at the end of the URL!
+                    // To connect the Android emulator to Django on localhost,
+                    // use the URL http://10.0.2.2/
+                    final response = await request.login("http://localhost:8000/auth/login/", {
+                    'username': username,
+                    'password': password,
+                    });
+
+                    if (request.loggedIn) {
+                    String message = response['message'];
+                    String uname = response['username'];
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => MyHomePage()),
+                    );
+                    ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                            SnackBar(content: Text("$message Welcome, $uname.")));
+                    } else {
+                    showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                        title: const Text('Login Failed'),
+                        content:
+                        Text(response['message']),
+                        actions: [
+                            TextButton(
+                            child: const Text('OK'),
+                            onPressed: () {
+                                Navigator.pop(context);
+                            },
+                            ),
+                        ],
+                        ),
+                    );
+                    }
+                },
+                child: const Text('Login'),
+                ),
+            ],
+            ),
+        ),
+        );
+    }
+    }
+```
+2. Make authentication app in django project
+views.py:
+```
+    from django.shortcuts import render
+    from django.contrib.auth import authenticate, login as auth_login
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
+    from django.contrib.auth import logout as auth_logout
+
+    @csrf_exempt
+    def login(request):
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            if user.is_active:
+                auth_login(request, user)
+                # Successful login status.
+                return JsonResponse({
+                    "username": user.username,
+                    "status": True,
+                    "message": "Login successful!"
+                    # Add other data if you want to send data to Flutter.
+                }, status=200)
+            else:
+                return JsonResponse({
+                    "status": False,
+                    "message": "Login failed, account disabled."
+                }, status=401)
+
+        else:
+            return JsonResponse({
+                "status": False,
+                "message": "Login failed, check email or password again."
+            }, status=401)
+        
+    @csrf_exempt
+    def logout(request):
+        username = request.user.username
+
+        try:
+            auth_logout(request)
+            return JsonResponse({
+                "username": username,
+                "status": True,
+                "message": "Logged out successfully!"
+            }, status=200)
+        except:
+            return JsonResponse({
+            "status": False,
+            "message": "Logout failed."
+            }, status=401)
+
+```
+urls.py:
+```
+    from django.urls import path
+    from authentication.views import login,logout
+
+    app_name = 'authentication'
+
+    urlpatterns = [
+        path('login/', login, name='login'),
+        path('logout/', logout, name='logout'),
+    ]
+```
+also add the routing to the new app in the project folder
+
+### 2. Custom Model
+create items.dart in a new folder called model
+run django server and goto your json path in local server
+copy paste json code to [QuickType](https://app.quicktype.io)
+```
+    // To parse this JSON data, do
+    //
+    //     final item = itemFromJson(jsonString);
+
+    import 'dart:convert';
+
+    List<Item> itemFromJson(String str) => List<Item>.from(json.decode(str).map((x) => Item.fromJson(x)));
+
+    String itemToJson(List<Item> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+
+    class Item {
+    String model;
+    int pk;
+    Fields fields;
+
+    Item({
+        required this.model,
+        required this.pk,
+        required this.fields,
+    });
+
+    factory Item.fromJson(Map<String, dynamic> json) => Item(
+        model: json["model"],
+        pk: json["pk"],
+        fields: Fields.fromJson(json["fields"]),
+    );
+
+    Map<String, dynamic> toJson() => {
+        "model": model,
+        "pk": pk,
+        "fields": fields.toJson(),
+    };
+    }
+
+    class Fields {
+    int user;
+    String name;
+    String category;
+    int amount;
+    String description;
+
+    Fields({
+        required this.user,
+        required this.name,
+        required this.category,
+        required this.amount,
+        required this.description,
+    });
+
+    factory Fields.fromJson(Map<String, dynamic> json) => Fields(
+        user: json["user"],
+        name: json["name"],
+        category: json["category"],
+        amount: json["amount"],
+        description: json["description"],
+    );
+
+    Map<String, dynamic> toJson() => {
+        "user": user,
+        "name": name,
+        "category": category,
+        "amount": amount,
+        "description": description,
+    };
+    }
+
+```
+### 3. Creating View Item Screen
+1. In django main app add this code to views.py
+```
+    @csrf_exempt
+    def create_product_flutter(request):
+        if request.method == 'POST':
+            
+            data = json.loads(request.body)
+
+            new_product = Product.objects.create(
+                user = request.user,
+                name = data["name"],
+                amount = int(data["amount"]),
+                category = data["category"],
+                description = data["description"]
+            )
+
+            new_product.save()
+
+            return JsonResponse({"status": "success"}, status=200)
+        else:
+            return JsonResponse({"status": "error"}, status=401)
+```
+2. Create list_item.dart in screens folder
+```
+    import 'package:flutter/material.dart';
+    import 'package:http/http.dart' as http;
+    import 'dart:convert';
+    import 'package:rakhas_inventory/models/items.dart';
+    import 'package:rakhas_inventory/widget/left_drawer.dart';
+    import 'package:rakhas_inventory/screens/item_detail.dart';
+
+    class ItemPage extends StatefulWidget {
+    const ItemPage({Key? key}) : super(key: key);
+
+    @override
+    _ItemPageState createState() => _ItemPageState();
+    }
+
+    class _ItemPageState extends State<ItemPage> {
+    Future<List<Item>> fetchItem() async {
+        var url = Uri.parse(
+            'http://localhost:8000/json/');
+        var response = await http.get(
+        url,
+        headers: {"Content-Type": "application/json"},
+        );
+
+        // decode the response to JSON
+        var data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        List<Item> list_item = [];
+        for (var d in data) {
+        if (d != null) {
+            list_item.add(Item.fromJson(d));
+        }
+        }
+        return list_item;
+    }
+
+    @override
+    Widget build(BuildContext context) {
+        return Scaffold(
+            appBar: AppBar(
+            title: const Text('Item'),
+            backgroundColor: Colors.teal,
+            foregroundColor: Colors.white,
+            ),
+            drawer: const LeftDrawer(),
+            body: FutureBuilder(
+                future: fetchItem(),
+                builder: (context, AsyncSnapshot snapshot) {
+                if (snapshot.data == null) {
+                    return const Center(child: CircularProgressIndicator());
+                } else {
+                    if (!snapshot.hasData) {
+                    return const Column(
+                        children: [
+                        Text(
+                            "No item data available.",
+                            style:
+                            TextStyle(color: Color(0xff59A5D8), fontSize: 20),
+                        ),
+                        SizedBox(height: 8),
+                        ],
+                    );
+                    } else {
+                    return ListView.builder(
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (_, index) =>InkWell(
+                        onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ItemDetailPage(
+                                        item: snapshot.data![index])));
+                        },
+                        child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                                Text(
+                                "${snapshot.data![index].fields.name}",
+                                style: const TextStyle(
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.bold,
+                                ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text("${snapshot.data![index].fields.amount}"),
+                                const SizedBox(height: 10),
+                                Text(
+                                    "${snapshot.data![index].fields.category}"),
+                                const SizedBox(height: 10),
+                                Text(
+                                    "${snapshot.data![index].fields.description}")
+                            ],
+                            ),
+                        )));
+                    }
+                }
+                }));
+    }
+    }
+```
+### 4. Creating Detail Item Screen
+make item_detail.dart in screens folder
+```
+    import 'package:flutter/material.dart';
+    import 'package:rakhas_inventory/models/items.dart';
+    import 'package:rakhas_inventory/widget/left_drawer.dart';
+
+    class ItemDetailPage extends StatelessWidget {
+    final Item item;
+
+    const ItemDetailPage({Key? key, required this.item}) : super(key: key);
+
+    @override
+    Widget build(BuildContext context) {
+        return Scaffold(
+        appBar: AppBar(
+            title: const Text('Item Details'),
+            backgroundColor: Colors.teal,
+            foregroundColor: Colors.white,
+        ),
+        drawer: const LeftDrawer(),
+        body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Text(
+                item.fields.name,
+                style: const TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,
+                ),
+                ),
+                const SizedBox(height: 10),
+                Text("Amount: ${item.fields.amount}"),
+                const SizedBox(height: 10),
+                Text("Description: ${item.fields.description}"),
+                const SizedBox(height: 10),
+                Text("Category: ${item.fields.category}"),
+                const SizedBox(height: 10),
+                Text("Damage: ${item.fields.name}"),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                onPressed: () {
+                    Navigator.pop(context); // Navigate back to the item list page
+                },
+                child: const Text('Back to Item List'),
+                ),
+            ],
+            ),
+        ),
+        );
+    }
+    }
+```
+### 5. Adjusting other file to connect to django
+1. item_form.dart
+```
+    import 'package:flutter/material.dart';
+    import 'package:pbp_django_auth/pbp_django_auth.dart';
+    import 'package:provider/provider.dart';
+    import 'package:rakhas_inventory/widget/left_drawer.dart';
+    import 'package:rakhas_inventory/screens/menu.dart';
+    import 'dart:convert';
+
+    class ItemFormPage extends StatefulWidget {
+    const ItemFormPage({super.key});
+
+    @override
+    State<ItemFormPage> createState() => _ItemFormPageState();
+    }
+
+    class _ItemFormPageState extends State<ItemFormPage> {
+    final _formKey = GlobalKey<FormState>();
+    String _name = "";
+    int _amount = 0;
+    String _category = "";
+    String _description = "";
+
+    @override
+    Widget build(BuildContext context) {
+        final request = context.watch<CookieRequest>();
+        return Scaffold(
+        appBar: AppBar(
+            title: const Center(
+            child: Text(
+                'Add Item Form',
+            ),
+            ),
+            backgroundColor: Colors.teal,
+            foregroundColor: Colors.white,
+        ),
+        // Adding the previously created drawer here
+        drawer: const LeftDrawer(),
+        body: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                    Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextFormField(
+                        decoration: InputDecoration(
+                        hintText: "Item Name",
+                        labelText: "Item Name",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        ),
+                        onChanged: (String? value) {
+                        setState(() {
+                            _name = value!;
+                        });
+                        },
+                        onSaved: (String? value) {
+                        setState(() {
+                            _name = value!;
+                        });
+                        },
+                        validator: (String? value) {
+                        if (value == null || value.isEmpty) {
+                            return "Name cannot be empty!";
+                        }
+                        return null;
+                        },
+                    ),
+                    ),
+                    Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextFormField(
+                        decoration: InputDecoration(
+                        hintText: "Amount",
+                        labelText: "Amount",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        ),
+                        onChanged: (String? value) {
+                        setState(() {
+                            _amount = int.tryParse(value!) ?? _amount;
+                        });
+                        },
+                        onSaved: (String? value) {
+                        setState(() {
+                            _amount = int.tryParse(value!) ?? _amount;
+                        });
+                        },
+                        validator: (String? value) {
+                        if (value == null || value.isEmpty) {
+                            return "Amount cannot be empty!";
+                        }
+                        if (int.tryParse(value) == null) {
+                            return "Amount must be a number!";
+                        }
+                        return null;
+                        },
+                    ),
+                    ),
+                    Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextFormField(
+                        decoration: InputDecoration(
+                        hintText: "Category",
+                        labelText: "Category",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        ),
+                        onChanged: (String? value) {
+                        setState(() {
+                            _category = value!;
+                        });
+                        },
+                        onSaved: (String? value) {
+                        setState(() {
+                            _category = value!;
+                        });
+                        },
+                        validator: (String? value) {
+                        if (value == null || value.isEmpty) {
+                            return "Category cannot be empty!";
+                        }
+                        return null;
+                        },
+                    ),
+                    ),
+                    Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextFormField(
+                        decoration: InputDecoration(
+                        hintText: "Description",
+                        labelText: "Description",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        ),
+                        onChanged: (String? value) {
+                        setState(() {
+                            _description = value!;
+                        });
+                        },
+                        onSaved: (String? value) {
+                        setState(() {
+                            _description = value!;
+                        });
+                        },
+                        validator: (String? value) {
+                        if (value == null || value.isEmpty) {
+                            return "Description cannot be empty!";
+                        }
+                        return null;
+                        },
+                    ),
+                    ),
+                    Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                            MaterialStateProperty.all(Colors.teal),
+                        ),
+                        onPressed: () async {
+                            if (_formKey.currentState!.validate()) {
+                            // Send request to Django and wait for the response
+                            final response = await request.postJson(
+                                "http://localhost:8000/create-flutter/",
+                                jsonEncode(<String, String>{
+                                    'name': _name,
+                                    'amount': _amount.toString(),
+                                    'category': _category,
+                                    'description': _description,
+                                }));
+                            if (response['status'] == 'success') {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                content: Text("New item has saved successfully!"),
+                                ));
+                                Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => MyHomePage()),
+                                );
+                            } else {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                content:
+                                Text("Something went wrong, please try again."),
+                                ));
+                            }
+                            }
+                        },
+                        child: const Text(
+                            "Save",
+                            style: TextStyle(color: Colors.white),
+                        ),
+                        ),
+                    ),
+                    ),
+                ]
+            ),
+            ),
+        ),
+        );
+    }
+    }
+```
+2. main.dart
+```
+    import 'package:flutter/material.dart';
+    import 'package:provider/provider.dart';
+    import 'package:pbp_django_auth/pbp_django_auth.dart';
+    import 'package:rakhas_inventory/screens/login.dart';
+
+    void main() {
+    runApp(const MyApp());
+    }
+
+    class MyApp extends StatelessWidget {
+    const MyApp({Key? key}) : super(key: key);
+
+    @override
+    Widget build(BuildContext context) {
+        return Provider(
+        create: (_) {
+            CookieRequest request = CookieRequest();
+            return request;
+        },
+        child: MaterialApp(
+            title: 'Inventory',
+            theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+                useMaterial3: true,
+            ),
+            home: const LoginPage()),
+        );
+    }
+    }
+```
+3. menu_card.dart
+```
+    import 'package:flutter/material.dart';
+    import 'package:pbp_django_auth/pbp_django_auth.dart';
+    import 'package:provider/provider.dart';
+    import 'package:rakhas_inventory/screens/item_form.dart';
+    import 'package:rakhas_inventory/screens/login.dart';
+    import 'package:rakhas_inventory/screens/list_item.dart';
 
 
+    class MenuItem {
+    final String name;
+    final IconData icon;
+    final Color color;
 
+    MenuItem(this.name, this.icon,this.color);
+    }
 
+    class MenuCard extends StatelessWidget {
+    final MenuItem item;
 
+    const MenuCard(this.item, {Key? key}); // Constructor
+
+    @override
+    Widget build(BuildContext context) {
+        final request = context.watch<CookieRequest>();
+        return Material(
+        color: item.color,
+        child: InkWell(
+            // Responsive touch area
+            onTap: () async {
+            // Show a SnackBar when clicked
+            ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(
+                    content: Text("You pressed the ${item.name} button!")));
+            if (item.name == "Add Item") {
+                Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ItemFormPage(),
+                ),
+                );
+            }else if (item.name == "View Item") {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => const ItemPage()));
+            }else if (item.name == "Logout") {
+                final response = await request.logout(
+                    "http://localhost:8000/auth/logout/");
+                String message = response["message"];
+                if (response['status']) {
+                String uname = response["username"];
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text("$message Good bye, $uname."),
+                ));
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+                } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text("$message"),
+                ));
+                }
+            }
+            },
+            child: Container(
+            // Container to hold Icon and Text
+            padding: const EdgeInsets.all(8),
+            child: Center(
+                child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                    Icon(
+                    item.icon,
+                    color: Colors.white,
+                    size: 30.0,
+                    ),
+                    const Padding(padding: EdgeInsets.all(3)),
+                    Text(
+                    item.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                    ),
+                ],
+                ),
+            ),
+            ),
+        ),
+        );
+    }
+    }
+```
