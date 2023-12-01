@@ -22,8 +22,8 @@ Stateless widgets in Flutter are immutable and do not hold any state that change
 ## Steps
 ### 1. create new flutter project
     ```
-    flutter create inventaris_mobile
-    cd inventaris_mobile
+    flutter create rakhas_inventory
+    cd rakhas_inventory
     flutter run
     ```
 ### 2. Modify main.dart and create menu.dart
